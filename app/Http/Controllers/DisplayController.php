@@ -23,7 +23,7 @@ class DisplayController extends Controller
                     'branch_id' => $user->branch_id,
                     'name' => $user->name,
                     'login_status' => $user->login_status,
-                    'counter_name' => $user->assigned_counter->counter->name,
+                    'counter_name' => $user->assigned_counter->counter->name ?? null,
                     'counter_id' => $user->assigned_counter->counter->id,
                 ];
             });
