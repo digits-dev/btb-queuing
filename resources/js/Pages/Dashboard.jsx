@@ -12,9 +12,15 @@ import PricingTable from "@/Components/PricingTable";
 import TextInput from "@/Components/TextInput";
 import { Player } from "@lottiefiles/react-lottie-player";
 import { toast } from "react-toastify";
+import IdTextScanner from "@/Components/IdTextScanner";
+import InputLabel from "@/Components/InputLabel";
+import FormComponent from "@/Components/FormComponent";
 
 export default function Dashboard() {
     const { flash = {} } = usePage().props;
+    const {get_my_data} = usePage().props;
+    const {branch_id} = usePage().props;
+    const {branches} = usePage().props;
     const [showSuccess, setShowSuccess] = useState(!!flash.queue_info);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [service3Step, setService3Step] = useState("menu");
@@ -95,6 +101,13 @@ export default function Dashboard() {
         }
     }, [input]);
 
+const [detectedIdType, setDetectedIdType] = useState(null);
+const [scannedText, setScannedText] = useState("");
+
+const handleScanResult = (text) => {
+  setScannedText(text);
+};
+
     return (
         <AuthenticatedLayout
             header={
@@ -108,10 +121,17 @@ export default function Dashboard() {
             <ApplicationHeader
                 title="Queue Registration"
                 subtitle={
-                    <span className="text-lg text-gray-700">
-                        Please choose your lane and complete the following
-                        requirements.
-                    </span>
+                    branch_id ?
+                        <span className="text-lg text-gray-700">
+                            Please choose your lane and complete the following
+                            requirements.
+                        </span>
+                    : 
+                        <>
+                        <span className="text-lg text-gray-700">
+                            Please choose a branch to start Registration.
+                        </span>
+                        </>
                 }
             />
 
@@ -130,7 +150,28 @@ export default function Dashboard() {
                     />
                 ) : (
                     <>
-                        {!isLane2Selected && !selectedLane && (
+                        {!branch_id && (
+                            <CardDisplay className="mt-5">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 p-8">
+                                    {branches.map((bra) => (
+                                        <div
+                                            key={bra.id}
+                                            onClick={() => router.post(route('queue.select.branch'), { branch_id: bra.id })}
+                                            className="cursor-pointer transition hover:scale-105 border-[1px] border-gray-100 rounded-lg shadow-lg"
+                                        >
+                                            <ServiceOptionCard
+                                                id={bra.id}
+                                                title={bra.branch_name}
+                                                description={bra.branch_address}
+                                                image="https://cdn-icons-png.flaticon.com/128/854/854878.png"
+                                            />
+                                        </div>
+                                    ))}
+                                </div>
+                            </CardDisplay>
+                        )}
+
+                        {!isLane2Selected && !selectedLane && branch_id && (
                             <CardDisplay className="mt-5">
                                 <div className="flex gap-6 justify-center items-start p-8 flex-wrap">
                                     {QueueLaneType.map((lane) => (
@@ -192,16 +233,11 @@ export default function Dashboard() {
                                         Back to Service Selection
                                     </button>
 
-                                    <h3 className="text-2xl font-black text-gray-700">
+                                    <h3 className="text-2xl font-black text-gray-700 mb-2">
                                         Fill Out Information
                                     </h3>
-                                    <Player
-                                        autoplay
-                                        loop
-                                        src="/img/writing.json"
-                                        style={{ height: "150px", width: "400px" }}
-                                    />
-                                    <form onSubmit={handleSubmit}>
+                                    {/* <FormComponent /> */}
+                                    <form onSubmit={handleSubmit} className="text-start bg-gray-100 rounded-lg p-8">
                                         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
                                             <Select2Field
                                                 name="model_ids"
@@ -260,7 +296,7 @@ export default function Dashboard() {
                                         Back to Service Selection
                                     </button>
                                     <h3 className="text-2xl font-black text-gray-700 mb-5">
-                                        Scan Here to track your Repair
+                                        Track Your Repair? Scan Here.
                                     </h3>
                                     <div className="flex items-center justify-center mb-2">
                                         <img
@@ -274,7 +310,7 @@ export default function Dashboard() {
                                     </small>
                                     <div className="mt-3">
                                         <p className="mb-3">
-                                            For more concerns, generate a Queue number then <br></br> please wait for your number to be called
+                                            Need more help? Tap to get your number and wait to be called.
                                         </p>
                                         <form onSubmit={handleSubmit}>
                                             <PrimaryButton>
@@ -302,8 +338,7 @@ export default function Dashboard() {
                                     <PricingTable />
                                     <div className="mt-3">
                                         <p className="mb-3">
-                                            For more concerns, generate a Queue number then <br />
-                                            please wait for your number to be called
+                                            Procced with Service? please fill out the form below.
                                         </p>
                                         <PrimaryButton onClick={() => setService3Step("form")}>
                                             Proceed to fill out required info
@@ -355,7 +390,7 @@ export default function Dashboard() {
                                         )}
                                         <div className="mt-3">
                                             <p className="my-5">
-                                                To claim your reapir or For more concerns, generate a Queue number <br/> then please wait for your number to be called
+                                                Ready to claim? or Got Questions? <br />Tap the generate button to get your number and wait to be called.
                                             </p>
                                             <form onSubmit={handleSubmit}>
                                                 <PrimaryButton>
@@ -372,60 +407,84 @@ export default function Dashboard() {
                         {selectedLane === 1 && (
                             <CardDisplay className="mt-5">
                                 <div className="p-8">
+                                    {!form.qualification && (
                                     <button
                                         onClick={() => setSelectedLane(null)}
                                         className="mb-4 flex items-center text-gray-600 hover:text-gray-800 transition"
                                     >
                                         <i className="fas fa-arrow-left mr-2"></i> Back to Lane Selection
                                     </button>
-                                    <h3 className="text-2xl font-black text-gray-700">
-                                        Welcome to Priority Lane
-                                    </h3>
-                                    <Player
-                                        autoplay
-                                        loop
-                                        src="/img/priority_qualification.json"
-                                        style={{ height: "150px", width: "400px" }}
-                                    />
-                                    <p className="text-gray-600 mt-2">
-                                        Please select you qualification in the list as priority.
-                                    </p>
-                                    <select
-                                        name="qualification"
-                                        value={form.qualification}
-                                        onChange={(e) =>
-                                            setForm((prev) => ({
-                                                ...prev,
-                                                qualification: e.target.value,
-                                            }))
-                                        }
-                                        className="w-[450px] mt-3 border text-center border-gray-300 rounded p-2 text-sm focus:outline-none focus:ring-0"
-                                    >
-                                        <option value="" disabled defaultValue>
-                                            Select your Qualification
-                                        </option>
-                                        <option value="Persons With Disabilities (PWD) - ID">
-                                            Persons With Disabilities (PWD) - ID
-                                        </option>
-                                        <option value="Senior Citizen - ID">Senior Citizen - ID</option>
-                                        <option value="Pregnant Women - Ultrasound">
-                                            Pregnant Women - Ultrasound
-                                        </option>
-                                    </select>
+                                    )}
 
-                                    <p className="my-5">
-                                        To claim your reapir or For more concerns, generate a Queue number <br/> then please wait for your number to be called
-                                    </p>
-                                    <form onSubmit={handleSubmit}>
-                                        <PrimaryButton disabled={!form.qualification || isSubmitting}>
-                                            {isSubmitting ? "Generating..." : "Generate"}
-                                            <i className="bi bi-arrow-clockwise ms-2"></i>
-                                        </PrimaryButton>
-                                    </form>
+                                    <div>
+                                        {/* If qualification is selected, show scanner + back to ID selection */}
+                                        {form.qualification && (
+                                            <>
+                                                {/* Back to ID Selection */}
+                                                <button
+                                                    onClick={() =>
+                                                        setForm((prev) => ({ ...prev, qualification: "" }))
+                                                    }
+                                                    className="mb-4 flex items-center text-gray-600 hover:text-gray-800 transition"
+                                                >
+                                                    <i className="fas fa-arrow-left mr-2"></i> Back to Qualification Selection
+                                                </button>
+
+                                                <IdTextScanner
+                                                    selectedQualification={form.qualification}
+                                                    onTextExtracted={handleScanResult}
+                                                    onIdTypeDetected={setDetectedIdType}
+                                                />
+                                                <p className="my-5">
+                                                    Ready to proceed? Tap the generate button to get your number and wait to be called.
+                                                </p>
+
+                                                <form onSubmit={handleSubmit}>
+                                                    <PrimaryButton disabled={!form.qualification || isSubmitting}>
+                                                        {isSubmitting ? "Generating..." : "Generate"}
+                                                        <i className="bi bi-arrow-clockwise ms-2"></i>
+                                                    </PrimaryButton>
+                                                </form>
+                                            </>
+                                        )}
+
+                                        {!form.qualification && (
+                                            <>
+                                                <h3 className="text-2xl font-black text-gray-700">Priority Queue</h3>
+
+                                                <Player
+                                                    autoplay
+                                                    loop
+                                                    src="/img/priority_qualification.json"
+                                                    style={{ height: "150px", width: "400px" }}
+                                                />
+
+                                                <p className="text-gray-600 mt-2">
+                                                    Tap the dropdown button
+                                                </p>
+
+                                                <select
+                                                    name="qualification"
+                                                    value={form.qualification}
+                                                    onChange={(e) =>
+                                                        setForm((prev) => ({ ...prev, qualification: e.target.value }))
+                                                    }
+                                                    className="w-[450px] mt-3 border text-center border-gray-300 rounded p-2 text-sm focus:outline-none"
+                                                >
+                                                    <option value="" disabled>
+                                                        Select your Qualification
+                                                    </option>
+                                                    <option value="pwd">
+                                                        Persons With Disabilities (PWD) - ID
+                                                    </option>
+                                                    <option value="senior citizen">Senior Citizen - ID</option>
+                                                </select>
+                                            </>
+                                        )}
+                                    </div>
                                 </div>
                             </CardDisplay>
                         )}
-
                     </>
                 )}
             </div>

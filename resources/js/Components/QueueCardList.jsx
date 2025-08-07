@@ -21,12 +21,12 @@ export default function QueueCardList({ number, service, lane, isActive, onNext,
                         Next
                     </button>
                 )}
-                <button
+                {/* <button
                     onClick={onRemove}
                     className="text-xl text-black hover:text-red-500"
                 >
                     &times;
-                </button>
+                </button> */}
             </div>
         </div>
     );

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use App\Events\QueueRegistration;
+use App\Models\Branch;
 use App\Models\QueuCounterAssignment;
 use App\Models\QueueIssueDescriptions;
 use App\Models\QueueLaneTypes;
@@ -12,6 +13,7 @@ use App\Models\QueueModelList;
 use App\Models\QueueNumbers;
 use App\Models\QueueServiceType;
 use App\Models\ReturnsHeader;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Carbon\Carbon;
@@ -22,17 +24,45 @@ class QueueRegistrationController extends Controller
 {
     public function show()
     {
+        $user = Auth::user();
         $QueueLaneType = QueueLaneTypes::orderBy('id', 'desc')->get();
         $QueueServiceType = QueueServiceType::orderBy('id', 'asc')->get();
         $QueueModelList = QueueModelList::orderBy('id', 'asc')->get();
         $QueueIssueDescriptions = QueueIssueDescriptions::orderBy('id', 'asc')->get();
-
+        $branches = Branch::orderBy('id', 'asc')->get();
+        $get_my_data = User::with(['other_info'])->where('id', $user->id)->first();
+        
         return Inertia::render('Dashboard', [
             'QueueLaneType' => $QueueLaneType,
             'QueueServiceType' => $QueueServiceType,
             'QueueModelList' => $QueueModelList,
             'QueueIssueDescriptions' => $QueueIssueDescriptions,
+            'branch_id' => Auth::user()->branch_id,
+            'branches' => $branches,
+            'get_my_data' => $get_my_data,
+            'id_cms_privileges' => $user->id_cms_privileges,
         ]);
+    }
+
+    public function selectBranch(Request $request)
+    {
+        $validated = $request->validate([
+            'branch_id' => ['required'],
+        ]);
+
+        $is_branch_exist = Branch::where('id', $validated['branch_id'])->first();
+
+        if (!$is_branch_exist) {
+            return back()->with('error', 'Branch did not exist.');
+        }
+
+        $update_user_branch = User::where('id', Auth::user()->id)->update([
+            'branch_id' => $validated['branch_id'],
+        ]);
+
+        if ($update_user_branch) {
+            return back()->with('success', 'Branch selected successfully.');
+        }
     }
 
     public function store(Request $request)

@@ -20,6 +20,7 @@ class QueueNumbers extends Model
         'queue_number',
         'queue_date',
         'priority_qualification',
+        'is_proceed_repair',
         'status',
         'created_at',
         'called_at',

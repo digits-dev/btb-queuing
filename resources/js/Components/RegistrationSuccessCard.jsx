@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { router } from "@inertiajs/react";
 
 export default function RegistrationSuccessCard({ number, name, service, className="" }) {
-    const [redirectCountdown, setRedirectCountdown] = useState(5);
+    const [redirectCountdown, setRedirectCountdown] = useState(3);
 
     useEffect(() => {
         const timer = setInterval(() => {
