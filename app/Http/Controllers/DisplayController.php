@@ -23,47 +23,17 @@ class DisplayController extends Controller
                     'branch_id' => $user->branch_id,
                     'name' => $user->name,
                     'login_status' => $user->login_status,
-                    'counter_name' => $user->assigned_counter->counter->name ?? null,
+                    'counter_name' => $user->assigned_counter->counter->name,
                     'counter_id' => $user->assigned_counter->counter->id,
                 ];
             });
 
-        // 🔁 Fetch waiting queues and order by creation
-        $waitingQueues = QueueNumbers::with(['laneType', 'counter'])
-            ->where('branch_id', Auth::user()->branch_id)
-            ->where('status', 'waiting')
-            ->orderBy('created_at')
-            ->get();
-
-        // ✅ Split into priority and regular based on prefix (P and R)
-        $priority = $waitingQueues->filter(fn($q) => str_starts_with($q->queue_number, 'P'))->values();
-        $regular = $waitingQueues->filter(fn($q) => str_starts_with($q->queue_number, 'R'))->values();
-
-        $interleaved = collect();
-
-        // ✅ Interleave or append based on first entry time
-        if (
-            $priority->isNotEmpty() &&
-            $regular->isNotEmpty() &&
-            $priority->first()->created_at < $regular->first()->created_at
-        ) {
-            $interleaved = $priority->concat($regular);
-        } else {
-            for ($i = 0; $i < max($priority->count(), $regular->count()); $i++) {
-                if (isset($priority[$i])) $interleaved->push($priority[$i]);
-                if (isset($regular[$i])) $interleaved->push($regular[$i]);
-            }
-        }
-
-        // 👇 Same for on-call queues (optional)
-        $OnCallQueueNumbers = QueueNumbers::with(['laneType', 'serviceType', 'counter'])
-            ->where('status', 'serving')
-            ->where('branch_id', Auth::user()->branch_id)
-            ->get();
+        $QueueNumbers = QueueNumbers::with(['laneType', 'counter'])->where('branch_id', Auth::user()->branch_id)->where('status', 'waiting')->limit(16)->get();
+        $OnCallQueueNumbers = QueueNumbers::with(['laneType', 'serviceType', 'counter'])->whereIn('status', ['serving', 'For Repair'])->where('branch_id', Auth::user()->branch_id)->get();
 
         return Inertia::render('Display', [
             'online_users' => $online_users,
-            'QueueNumbers' => $interleaved->values(),
+            'QueueNumbers' => $QueueNumbers,
             'OnCallQueueNumbers' => $OnCallQueueNumbers,
             'branch_id' => Auth::user()->branch_id,
         ]);

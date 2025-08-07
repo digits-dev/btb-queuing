@@ -20,8 +20,11 @@ class User extends Authenticatable
      */
     protected $fillable = [
         'name',
+        'first_name',
+        'last_name',
         'email',
         'password',
+        'id_cms_privileges',
     ];
 
     /**
@@ -51,5 +54,10 @@ class User extends Authenticatable
     {
         return $this->hasOne(QueuCounterAssignment::class, 'user_id', 'id')
             ->whereNull('unassigned_at');
+    }
+
+    public function other_info()
+    {
+        return $this->hasOne(CustomerInfo::class, 'user_id', 'id');
     }
 }

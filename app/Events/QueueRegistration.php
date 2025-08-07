@@ -38,6 +38,7 @@ class QueueRegistration implements ShouldBroadcastNow
             'id' => $this->queue->id,
             'queue_number' => $this->queue->queue_number,
             'lane_name' => $this->laneName,
+            'lane_type_id' => $this->queue->lane_type_id,
             'status' => $this->queue->status,
             'branch_id' => $this->queue->branch_id,
         ];

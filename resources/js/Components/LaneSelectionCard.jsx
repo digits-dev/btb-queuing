@@ -7,7 +7,11 @@ export default function LaneSelectionCard({ type = 'regular', onSelect }) {
               </div>
           ),
           title: "Regular Lane",
-          description: "This lane is for all regular customers and non-priority clients.",
+          description: (
+              <>
+                This lane is reserved for all <br /> regular customers.
+              </>
+            ),
           features: [
               {
                   icon: <i className="fa-regular fa-clock text-gray-500"></i>,
@@ -28,7 +32,7 @@ export default function LaneSelectionCard({ type = 'regular', onSelect }) {
               </div>
           ),
           title: "Priority Lane",
-          description: "Priority Lane - Reserved for Senior Citizens, Persons with Disabilities, and Pregnant Women.",
+          description: "This lane is for Senior Citizens, Persons with Disabilities, and Pregnant Women.",
           features: [
               {
                   icon: <i className="fa-solid fa-bolt text-gray-500"></i>,
@@ -58,7 +62,7 @@ export default function LaneSelectionCard({ type = 'regular', onSelect }) {
         {lane.icon}
         <h3 className={`text-xl font-bold ${lane.colorClasses.split(' ')[2]}`}>{lane.title}</h3>
         <p className="text-md text-gray-600">{lane.description}</p>
-        <ul className="mt-4 space-y-1 text-md text-gray-700">
+        <ul className="mt-4 space-y-1 text-md text-gray-700 hidden">
           {lane.features.map((feat, index) => (
             <li key={index} className="flex items-center gap-2 justify-center">
               {feat.icon}
@@ -71,6 +75,7 @@ export default function LaneSelectionCard({ type = 'regular', onSelect }) {
           onClick={onSelect}
         >
           {lane.buttonText}
+          <i className="fa fa-arrow-right ms-2"></i>
         </button>
       </div>
     </div>

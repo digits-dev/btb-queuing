@@ -36,7 +36,7 @@ class AuthenticatedSessionController extends Controller
 
         $user = Auth::user();
 
-        if (!in_array($user->id_cms_privileges, [3, 11, 12])) {
+        if (!in_array($user->id_cms_privileges, [3, 11, 12, 13])) {
             Auth::logout();
             return redirect()->back()->withErrors([
                 'email' => 'You are not authorized to log in.',
@@ -58,7 +58,7 @@ class AuthenticatedSessionController extends Controller
             return redirect()->route('display');
         }
 
-        if($user->id_cms_privileges == 12){
+        if(in_array($user->id_cms_privileges, [12, 13])){
             return redirect()->route('dashboard');
         }
 
