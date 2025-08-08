@@ -34,7 +34,7 @@ public function store(Request $request): RedirectResponse
     $request->validate([
         'first_name' => 'required|string|max:255',
         'last_name' => 'required|string|max:255',
-        'email' => 'required|string|lowercase|email|max:255|unique:users',
+        'email' => 'required|string|lowercase|email|max:255|unique:cms_users',
         'password' => ['required', 'confirmed', Rules\Password::defaults()],
         'birthdate' => 'required|date',
         'contact' => 'required|string|max:20',
@@ -52,6 +52,7 @@ public function store(Request $request): RedirectResponse
     if ($user) {
         CustomerInfo::create([
             'user_id' => $user->id,
+            'customer_type' => "Online",
             'birthdate' => $request->birthdate,
             'contact_no' => $request->contact,
         ]);

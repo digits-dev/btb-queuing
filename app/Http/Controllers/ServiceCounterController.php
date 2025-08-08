@@ -134,11 +134,11 @@ class ServiceCounterController extends Controller
         if ($request->decision === 'no') {
             $queue->completed_at = now();
             $queue->cancel_reason = $request->reason;
+            event(new QueueCompleteCallServing($queue));
         }
 
         $queue->save();
 
-        // event(new QueueCompleteCallServing($queue));
 
         return back()->with('success', 'Queue is now For Repair.');
     }

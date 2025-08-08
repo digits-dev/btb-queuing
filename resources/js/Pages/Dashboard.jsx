@@ -18,6 +18,7 @@ import FormComponent from "@/Components/FormComponent";
 
 export default function Dashboard() {
     const { flash = {} } = usePage().props;
+    const {id_cms_privileges} = usePage().props;
     const {get_my_data} = usePage().props;
     const {branch_id} = usePage().props;
     const {branches} = usePage().props;
@@ -25,6 +26,7 @@ export default function Dashboard() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [service3Step, setService3Step] = useState("menu");
     const [input, setInput] = useState("");
+    // const [scanVerified, setScanVerified] = useState(false);
 
     const {
         QueueLaneType,
@@ -40,6 +42,11 @@ export default function Dashboard() {
         model_ids: [],
         issue_ids: [],
         qualification: "",
+        firstName: "",
+        lastName: "",
+        email: "",
+        contactNo: "",
+        birthDate: "",
     });
 
     const isLane2Selected = selectedLane;
@@ -64,6 +71,15 @@ export default function Dashboard() {
             payload.issue_ids = (form.issue_ids ?? []).map((opt) => opt.value);
         }
 
+        if (id_cms_privileges == 12) {
+            Object.assign(payload, {
+                firstName: form.firstName,
+                lastName: form.lastName,
+                contactNo: form.contactNo,
+                birthDate: form.birthDate,
+            });
+        }
+
         router.post(route("queue.store"), payload, {
             onSuccess: () => {
                 setShowSuccess(true);
@@ -73,6 +89,11 @@ export default function Dashboard() {
                     model_ids: [],
                     issue_ids: [],
                     qualification: "",
+                    firstName: "",
+                    lastName: "",
+                    email: "",
+                    contactNo: "",
+                    birthDate: "",
                 });
             },
             onFinish: () => {
@@ -101,12 +122,20 @@ export default function Dashboard() {
         }
     }, [input]);
 
-const [detectedIdType, setDetectedIdType] = useState(null);
-const [scannedText, setScannedText] = useState("");
+    const [detectedIdType, setDetectedIdType] = useState(null);
+    const [scannedText, setScannedText] = useState("");
 
-const handleScanResult = (text) => {
-  setScannedText(text);
-};
+    const handleScanResult = (text) => {
+        setScannedText(text);
+    };
+
+    const [isIdVerified, setIsIdVerified] = useState(false);
+    const [verifiedPerson, setVerifiedPerson] = useState(null);
+
+    const handleMatchStatusChange = (isMatched, matchedPerson) => {
+        setIsIdVerified(isMatched);
+        setVerifiedPerson(matchedPerson);
+    };
 
     return (
         <AuthenticatedLayout
@@ -174,15 +203,19 @@ const handleScanResult = (text) => {
                         {!isLane2Selected && !selectedLane && branch_id && (
                             <CardDisplay className="mt-5">
                                 <div className="flex gap-6 justify-center items-start p-8 flex-wrap">
-                                    {QueueLaneType.map((lane) => (
-                                        <LaneSelectionCard
-                                            key={lane.id}
-                                            type={lane.name}
-                                            onSelect={() =>
-                                                setSelectedLane(lane.id)
-                                            }
-                                        />
+                                    {QueueLaneType
+                                        .filter(lane => {
+                                            if (id_cms_privileges === 14 && lane.id === 1) return false;
+                                            return true;
+                                        })
+                                        .map((lane) => (
+                                            <LaneSelectionCard
+                                                key={lane.id}
+                                                type={lane.name}
+                                                onSelect={() => setSelectedLane(lane.id)}
+                                            />
                                     ))}
+
                                 </div>
                             </CardDisplay>
                         )}
@@ -219,7 +252,7 @@ const handleScanResult = (text) => {
                             </CardDisplay>
                         )}
 
-                        {((selectedService === 1) || (selectedService === 3 && service3Step === "form")) && (
+                        {((selectedService === 1) || (selectedService === 3 && service3Step === "form") || (selectedService === 2 && service3Step === "form") || (selectedService === 4 && service3Step === "form")) && (
                             <CardDisplay className="mt-5">
                                 <div className="p-8">
                                     <button
@@ -236,38 +269,45 @@ const handleScanResult = (text) => {
                                     <h3 className="text-2xl font-black text-gray-700 mb-2">
                                         Fill Out Information
                                     </h3>
-                                    {/* <FormComponent /> */}
                                     <form onSubmit={handleSubmit} className="text-start bg-gray-100 rounded-lg p-8">
-                                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-                                            <Select2Field
-                                                name="model_ids"
-                                                label="Model List"
-                                                placeholder="Choose a model"
-                                                value={form.model_ids}
-                                                onChange={(val) =>
-                                                    handleFormChange(
-                                                        "model_ids",
-                                                        val
-                                                    )
-                                                }
-                                                options={modelOptions}
-                                                isMulti={true}
+                                        { id_cms_privileges == 12 && (
+                                            <FormComponent
+                                                formData={form}
+                                                onChange={(e) => handleFormChange(e.target.name, e.target.value)}
                                             />
-                                            <Select2Field
-                                                name="issue_ids"
-                                                label="Issue Description"
-                                                placeholder="Choose an issue"
-                                                value={form.issue_ids}
-                                                onChange={(val) =>
-                                                    handleFormChange(
-                                                        "issue_ids",
-                                                        val
-                                                    )
-                                                }
-                                                options={issueOptions}
-                                                isMulti={true}
-                                            />
-                                        </div>
+                                        ) }
+                                        {[1,3].includes(selectedService) && (
+                                            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                                                <Select2Field
+                                                    name="model_ids"
+                                                    label="Model List"
+                                                    placeholder="Choose a model"
+                                                    value={form.model_ids}
+                                                    onChange={(val) =>
+                                                        handleFormChange(
+                                                            "model_ids",
+                                                            val
+                                                        )
+                                                    }
+                                                    options={modelOptions}
+                                                    isMulti={true}
+                                                />
+                                                <Select2Field
+                                                    name="issue_ids"
+                                                    label="Issue Description"
+                                                    placeholder="Choose an issue"
+                                                    value={form.issue_ids}
+                                                    onChange={(val) =>
+                                                        handleFormChange(
+                                                            "issue_ids",
+                                                            val
+                                                        )
+                                                    }
+                                                    options={issueOptions}
+                                                    isMulti={true}
+                                                />
+                                            </div>
+                                        )}
                                         <div className="mt-6 flex items-center justify-end">
                                             <button
                                                 type="submit"
@@ -285,7 +325,7 @@ const handleScanResult = (text) => {
                             </CardDisplay>
                         )}
 
-                        {selectedService === 2 && (
+                        {selectedService === 2 && service3Step === "menu" && (
                             <CardDisplay className="mt-5">
                                 <div className="p-8">
                                     <button
@@ -312,12 +352,20 @@ const handleScanResult = (text) => {
                                         <p className="mb-3">
                                             Need more help? Tap to get your number and wait to be called.
                                         </p>
-                                        <form onSubmit={handleSubmit}>
-                                            <PrimaryButton>
-                                                Generate
-                                                <i className="bi bi-arrow-clockwise ms-2"></i>
+                                        {id_cms_privileges === 12 && (
+                                            <PrimaryButton onClick={() => setService3Step("form")}>
+                                                Proceed to fill out required info
+                                                <i className="bi bi-pencil-square ms-2"></i>
                                             </PrimaryButton>
-                                        </form>
+                                        )}
+                                        {id_cms_privileges !== 12 && (
+                                            <form onSubmit={handleSubmit}>
+                                                <PrimaryButton>
+                                                    Generate
+                                                    <i className="bi bi-arrow-clockwise ms-2"></i>
+                                                </PrimaryButton>
+                                            </form>
+                                        )}
                                     </div>
                                 </div>
                             </CardDisplay>
@@ -349,7 +397,7 @@ const handleScanResult = (text) => {
                             </CardDisplay>
                         )}
 
-                        {selectedService === 4 && (
+                        {selectedService === 4 && service3Step === "menu" && (
                             <CardDisplay className="mt-5">
                                 <div className="p-8">
                                     <button
@@ -392,12 +440,20 @@ const handleScanResult = (text) => {
                                             <p className="my-5">
                                                 Ready to claim? or Got Questions? <br />Tap the generate button to get your number and wait to be called.
                                             </p>
-                                            <form onSubmit={handleSubmit}>
-                                                <PrimaryButton>
-                                                    Generate
-                                                    <i className="bi bi-arrow-clockwise ms-2"></i>
+                                            {id_cms_privileges === 12 && (
+                                                <PrimaryButton onClick={() => setService3Step("form")}>
+                                                    Proceed to fill out required info
+                                                    <i className="bi bi-pencil-square ms-2"></i>
                                                 </PrimaryButton>
-                                            </form>
+                                            )}
+                                            {id_cms_privileges !== 12 && (
+                                                <form onSubmit={handleSubmit}>
+                                                    <PrimaryButton>
+                                                        Generate
+                                                        <i className="bi bi-arrow-clockwise ms-2"></i>
+                                                    </PrimaryButton>
+                                                </form>
+                                            )}
                                         </div> 
                                     </div>
                                 </div>
@@ -434,17 +490,43 @@ const handleScanResult = (text) => {
                                                     selectedQualification={form.qualification}
                                                     onTextExtracted={handleScanResult}
                                                     onIdTypeDetected={setDetectedIdType}
+                                                    onMatchStatusChange={handleMatchStatusChange}
+                                                    userData={get_my_data}
                                                 />
-                                                <p className="my-5">
-                                                    Ready to proceed? Tap the generate button to get your number and wait to be called.
-                                                </p>
 
-                                                <form onSubmit={handleSubmit}>
-                                                    <PrimaryButton disabled={!form.qualification || isSubmitting}>
-                                                        {isSubmitting ? "Generating..." : "Generate"}
-                                                        <i className="bi bi-arrow-clockwise ms-2"></i>
-                                                    </PrimaryButton>
-                                                </form>
+                                                {/* proceed part  */}
+                                                {isIdVerified && (
+                                                    <div className="mt-6 p-6 bg-green-50 border border-green-200 rounded-xl">
+                                                        <div className="text-center">
+                                                            <div className="text-4xl mb-3">🎉</div>
+                                                            <h3 className="text-xl font-semibold text-green-800 mb-2">
+                                                                ID Successfully Verified!
+                                                            </h3>
+                                                            {verifiedPerson && (
+                                                                <p className="text-green-700 mb-4">
+                                                                    Welcome, <strong>{verifiedPerson.name}</strong>
+                                                                </p>
+                                                            )}
+                                                            <p className="text-gray-700 mb-5">
+                                                                Ready to proceed? Tap the generate button to get your number and wait to be called.
+                                                            </p>
+                                                            {id_cms_privileges === 12 && (
+                                                                <PrimaryButton onClick={() => setService3Step("form")}>
+                                                                    Proceed to fill out required info
+                                                                    <i className="bi bi-pencil-square ms-2"></i>
+                                                                </PrimaryButton>
+                                                            )}
+                                                            {id_cms_privileges !== 12 && (
+                                                            <form onSubmit={handleSubmit}>
+                                                                <PrimaryButton disabled={!form.qualification || isSubmitting}>
+                                                                    {isSubmitting ? "Generating..." : "Generate"}
+                                                                    <i className="bi bi-arrow-clockwise ms-2"></i>
+                                                                </PrimaryButton>
+                                                            </form>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                )}
                                             </>
                                         )}
 
@@ -462,7 +544,7 @@ const handleScanResult = (text) => {
                                                 <p className="text-gray-600 mt-2">
                                                     Tap the dropdown button
                                                 </p>
-
+                                                
                                                 <select
                                                     name="qualification"
                                                     value={form.qualification}

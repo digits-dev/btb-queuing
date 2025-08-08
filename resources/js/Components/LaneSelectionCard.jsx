@@ -71,7 +71,7 @@ export default function LaneSelectionCard({ type = 'regular', onSelect }) {
           ))}
         </ul>
         <button
-          className={`mt-6 px-4 py-2 rounded-md text-white font-medium ${lane.colorClasses}`}
+          className={`mt-6 px-4 py-2 rounded-md text-white uppercase font-medium ${lane.colorClasses}`}
           onClick={onSelect}
         >
           {lane.buttonText}

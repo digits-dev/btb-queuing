@@ -12,7 +12,7 @@ export default function CounterCard({
             <div
                 className={`${status !== "offline" ? "animate-pulse" : ""} ${
                     status === "serving"
-                        ? "bg-green-300 shadow-xl rounded-md pt-3"
+                        ? "bg-green-300 shadow-xl rounded-md pt-3 animate-pump"
                         : ""
                 }`}
             >
@@ -33,7 +33,7 @@ export default function CounterCard({
                                 autoplay
                                 loop
                                 src="/img/waiting.json"
-                                style={{ height: "90px", width: "300px" }}
+                                style={{ height: "68px", width: "300px" }}
                             />
                         </div>
                     </>
@@ -48,19 +48,9 @@ export default function CounterCard({
                             {servingNumber}
                         </h1>
                         <div className="flex justify-center mt-4 bg-gray-100 rounded-md py-4 px-1">
-                            {/* <img
-                src="https://cdn-icons-png.flaticon.com/128/55/55240.png"
-                className="w-5"
-                alt=""
-              /> */}
                             <h1 className="text-md text-gray-900 mx-3">
                                 Please proceed to the counter
                             </h1>
-                            {/* <img
-                src="https://cdn-icons-png.flaticon.com/128/7512/7512321.png"
-                className="w-5"
-                alt=""
-              /> */}
                         </div>
                     </>
                 )}

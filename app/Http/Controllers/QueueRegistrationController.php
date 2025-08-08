@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use App\Events\QueueRegistration;
 use App\Models\Branch;
+use App\Models\CustomerInfo;
 use App\Models\QueuCounterAssignment;
 use App\Models\QueueIssueDescriptions;
 use App\Models\QueueLaneTypes;
@@ -67,8 +68,27 @@ class QueueRegistrationController extends Controller
 
     public function store(Request $request)
     {
+        $user = Auth::user();
         $validator = Validator::make($request->all(), [
-            'lane_id'     => ['required', 'exists:queue_lane_types,id'],
+            'lane_id' => ['required', 'exists:queue_lane_types,id'],
+
+            'firstName' => [
+                Rule::requiredIf($user->id_cms_privileges == 12),
+                'string',
+            ],
+
+            'lastName' => [
+                Rule::requiredIf($user->id_cms_privileges == 12),
+                'string',
+            ],
+
+            'contactNo' => [
+                Rule::requiredIf($user->id_cms_privileges == 12),
+            ],
+
+            'birthDate' => [
+                Rule::requiredIf($user->id_cms_privileges == 12),
+            ],
 
             'qualification' => [
                 Rule::requiredIf($request->lane_id == 1),
@@ -100,12 +120,10 @@ class QueueRegistrationController extends Controller
         ]);
 
         $data = $validator->validate();
-        $user = Auth::user();
         $today = Carbon::today();
         $prefix = $data['lane_id'] == 2 ? 'R' : ($data['lane_id'] == 1 ? 'P' : '');
 
         $queue = DB::transaction(function () use ($data, $user, $today, $prefix) {
-            // Locking for simultaneous submit
             $lastQueue = DB::table('queue_numbers')
                 ->where('branch_id', $user->branch_id)
                 ->whereDate('queue_date', $today)
@@ -114,15 +132,14 @@ class QueueRegistrationController extends Controller
                 ->lockForUpdate()
                 ->value('queue_number');
 
-            // Generate Queue Number
             $lastNumber = $lastQueue ? (int)substr($lastQueue, 1) : 0;
             $nextNumber = $lastNumber + 1;
             $nextQueueNumber = $prefix . str_pad($nextNumber, 3, '0', STR_PAD_LEFT);
 
-            return QueueNumbers::create([
+            $queue = QueueNumbers::create([
                 'branch_id'       => $user->branch_id,
                 'counter_id'      => null,
-                'user_id'         => $user->id,
+                'user_id'         => $user->id_cms_privileges == 12 ? null : $user->id,
                 'lane_type_id'    => $data['lane_id'],
                 'service_type_id' => $data['service_id'] ?? null,
                 'model'           => json_encode($data['model_ids'] ?? []),
@@ -131,9 +148,23 @@ class QueueRegistrationController extends Controller
                 'queue_date'      => $today,
                 'priority_qualification' => $data['qualification'] ?? null,
             ]);
+
+            if ($user->id_cms_privileges == 12) {
+                CustomerInfo::insert([
+                    'customer_type' => 'Walk-In',
+                    'queue_num_id'  => $queue->id,
+                    'first_name'    => $data['firstName'],
+                    'last_name'     => $data['lastName'],
+                    'birthdate'     => $data['birthDate'],
+                    'contact_no'    => $data['contactNo'],
+                    'created_at'    => now()
+                ]);
+            }
+
+            return $queue;
         });
 
-        $queue->load('laneType');
+        $queue->load(['laneType', 'serviceType']);
         $laneName = $queue->laneType->name ?? 'Unknown';
 
         event(new QueueRegistration($queue, $laneName));
@@ -141,8 +172,8 @@ class QueueRegistrationController extends Controller
         return redirect()->back()->with([
             'success' => "Registered with queue #{$queue->queue_number}",
             'queue_info' => [
-                'number' => $queue->queue_number,
-                'lane'   => $queue->laneType->name ?? '',
+                'number'  => $queue->queue_number,
+                'lane'    => $queue->laneType->name ?? '',
                 'service' => $queue->serviceType->name ?? '',
             ],
         ]);

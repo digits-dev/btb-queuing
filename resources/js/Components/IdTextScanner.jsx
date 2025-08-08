@@ -3,24 +3,6 @@ import Webcam from "react-webcam";
 import Tesseract from "tesseract.js";
 import classNames from "classnames";
 
-const sampleData = [
-    {
-        name: "John Doe",
-        contact: "09171234567",
-        birthdate: "1995-04-21",
-    },
-    {
-        name: "Jane Smith",
-        contact: "09981234567",
-        birthdate: "1992-11-10",
-    },
-    {
-        name: "Florentino Floro",
-        contact: "09056781234",
-        birthdate: "1953-11-05",
-    },
-];
-
 // Enhanced normalize function with better character handling
 const normalize = (str) =>
     str
@@ -32,7 +14,6 @@ const normalize = (str) =>
 // More flexible ID type detection
 const detectIDType = (text) => {
     const upper = text.toUpperCase();
-
     // PWD detection with multiple patterns
     const pwdPatterns = [
         "PWD",
@@ -42,7 +23,6 @@ const detectIDType = (text) => {
         "DISABILITY",
         "DISABLED",
     ];
-
     // Senior detection with multiple patterns
     const seniorPatterns = [
         "SENIOR CITIZEN",
@@ -70,7 +50,6 @@ const detectIDType = (text) => {
 const matchName = (extractedText, fullName) => {
     const normalizedText = normalize(extractedText);
     const parts = fullName.trim().split(/\s+/);
-
     if (parts.length < 2) return false;
 
     const firstName = normalize(parts[0]);
@@ -90,10 +69,8 @@ const matchName = (extractedText, fullName) => {
     // Check if any word is similar to first/last name (allowing 1-2 character differences)
     const isSimilar = (word1, word2) => {
         if (Math.abs(word1.length - word2.length) > 2) return false;
-
         let differences = 0;
         const maxLen = Math.max(word1.length, word2.length);
-
         for (let i = 0; i < maxLen; i++) {
             if (word1[i] !== word2[i]) {
                 differences++;
@@ -108,7 +85,6 @@ const matchName = (extractedText, fullName) => {
             word.length >= 3 &&
             (word.includes(firstName) || isSimilar(word, firstName))
     );
-
     const lastNameMatch = words.some(
         (word) =>
             word.length >= 3 &&
@@ -122,8 +98,12 @@ const IdTextScanner = ({
     selectedQualification,
     onTextExtracted,
     onIdTypeDetected,
+    onMatchStatusChange,
+    userData, // NEW PROP - pass get_my_data here
 }) => {
     const webcamRef = useRef(null);
+    const countdownRef = useRef(null);
+    
     const [scanning, setScanning] = useState(false);
     const [scannedText, setScannedText] = useState("");
     const [matchStatus, setMatchStatus] = useState("idle");
@@ -132,10 +112,24 @@ const IdTextScanner = ({
     const [scanProgress, setScanProgress] = useState(0);
     const [isWebcamReady, setIsWebcamReady] = useState(false);
     const [scanAttempts, setScanAttempts] = useState(0);
+    
+    // New countdown states
+    const [countdown, setCountdown] = useState(0);
+    const [isCountingDown, setIsCountingDown] = useState(false);
+
+    // Transform userData to match expected format
+    const transformedUserData = userData ? [{
+        name: userData.name || `${userData.first_name} ${userData.last_name}`,
+        contact: userData.other_info?.contact_no || "N/A",
+        birthdate: userData.other_info?.birthdate || "N/A",
+        email: userData.email || "N/A",
+        id: userData.id,
+        customer_type: userData.other_info?.customer_type || "N/A"
+    }] : [];
 
     // Optimized video constraints for better OCR
     const videoConstraints = {
-        facingMode: "environment",
+        facingMode: "user",
         width: { ideal: 1920 },
         height: { ideal: 1080 },
         aspectRatio: 16 / 9,
@@ -144,7 +138,41 @@ const IdTextScanner = ({
         whiteBalanceMode: "continuous",
     };
 
-    const captureAndScan = async () => {
+    // Countdown timer effect
+    useEffect(() => {
+        if (isCountingDown && countdown > 0) {
+            countdownRef.current = setTimeout(() => {
+                setCountdown(prev => prev - 1);
+            }, 1000);
+        } else if (isCountingDown && countdown === 0) {
+            setIsCountingDown(false);
+            performScan();
+        }
+
+        return () => {
+            if (countdownRef.current) {
+                clearTimeout(countdownRef.current);
+            }
+        };
+    }, [countdown, isCountingDown]);
+
+    // NEW: Notify parent when match status changes
+    useEffect(() => {
+        onMatchStatusChange?.(matchStatus === "success", matchedPerson);
+    }, [matchStatus, matchedPerson, onMatchStatusChange]);
+
+    // Start countdown function
+    const startCountdown = () => {
+        if (!isWebcamReady || scanning || isCountingDown) return;
+        
+        setCountdown(10);
+        setIsCountingDown(true);
+        setMatchStatus("preparing");
+        setScanAttempts(prev => prev + 1);
+    };
+
+    // Perform the actual scan
+    const performScan = async () => {
         if (
             !webcamRef.current ||
             !webcamRef.current.video ||
@@ -156,7 +184,6 @@ const IdTextScanner = ({
         setScanning(true);
         setMatchStatus("scanning");
         setScanProgress(0);
-        setScanAttempts((prev) => prev + 1);
 
         const imageSrc = webcamRef.current.getScreenshot({
             width: 1920,
@@ -182,18 +209,17 @@ const IdTextScanner = ({
             const extractedText = result.data.text;
             setScannedText(extractedText);
             onTextExtracted?.(extractedText);
-
             console.log(`Scan attempt ${scanAttempts}:`, extractedText);
 
             const detectedIdType = detectIDType(extractedText);
             setDetectedType(detectedIdType);
             onIdTypeDetected?.(detectedIdType);
 
-            // Enhanced matching with confidence scoring
+            // Enhanced matching with confidence scoring using real user data
             let bestMatch = null;
             let bestScore = 0;
 
-            for (const person of sampleData) {
+            for (const person of transformedUserData) {
                 const isNameMatch = matchName(extractedText, person.name);
                 const isTypeMatch = detectedIdType === selectedQualification;
 
@@ -224,9 +250,8 @@ const IdTextScanner = ({
                 console.warn(`❌ ID did not match (attempt ${scanAttempts})`);
                 console.warn("❌ Detected type:", detectedIdType);
                 console.warn("❌ Expected type:", selectedQualification);
-
                 // Debug: Check which names were found
-                const nameMatches = sampleData.filter((item) =>
+                const nameMatches = transformedUserData.filter((item) =>
                     matchName(extractedText, item.name)
                 );
                 console.log(
@@ -244,31 +269,10 @@ const IdTextScanner = ({
         }
     };
 
-    useEffect(() => {
-        if (
-            matchStatus !== "success" &&
-            isWebcamReady &&
-            selectedQualification
-        ) {
-            // Adaptive scanning interval - faster initially, slower after multiple attempts
-            const interval = scanAttempts > 5 ? 2000 : 1500;
-
-            const scanInterval = setInterval(() => {
-                if (!scanning) captureAndScan();
-            }, interval);
-
-            return () => clearInterval(scanInterval);
-        }
-    }, [
-        scanning,
-        matchStatus,
-        isWebcamReady,
-        selectedQualification,
-        scanAttempts,
-    ]);
-
     const getStatusStyles = () => {
         switch (matchStatus) {
+            case "preparing":
+                return "border-yellow-500 shadow-lg shadow-yellow-200 bg-yellow-50";
             case "scanning":
                 return "border-blue-500 shadow-lg shadow-blue-200 bg-blue-50";
             case "success":
@@ -282,6 +286,8 @@ const IdTextScanner = ({
 
     const getStatusIcon = () => {
         switch (matchStatus) {
+            case "preparing":
+                return "⏱️";
             case "scanning":
                 return "🔍";
             case "success":
@@ -297,6 +303,27 @@ const IdTextScanner = ({
         if (selectedQualification === "pwd") return "PWD";
         if (selectedQualification === "senior citizen") return "Senior Citizen";
         return selectedQualification;
+    };
+
+    const getButtonText = () => {
+        if (isCountingDown) {
+            return `⏱️ Preparing to scan... ${countdown}s`;
+        }
+        if (scanning) {
+            return `🔍 Scanning... ${scanProgress}%`;
+        }
+        if (!isWebcamReady) {
+            return "📷 Initializing Camera...";
+        }
+        if (matchStatus === "error") {
+            return `🔄 Retry Scan ${getQualificationDisplay()} ID`;
+        }
+        return `📸 Start Scan ${getQualificationDisplay()} ID`;
+    };
+
+    // Fixed button disabled condition
+    const isButtonDisabled = () => {
+        return scanning || !isWebcamReady || isCountingDown;
     };
 
     return (
@@ -319,6 +346,12 @@ const IdTextScanner = ({
                             </span>
                         )}
                     </p>
+                    {/* Show current user info */}
+                    {userData && (
+                        <p className="text-sm text-gray-500 mt-1">
+                            Looking for: <strong>{userData.name}</strong>
+                        </p>
+                    )}
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -340,14 +373,11 @@ const IdTextScanner = ({
                                 className={classNames(
                                     "rounded-lg overflow-hidden transition-all duration-300 border-4",
                                     {
-                                        "border-gray-300":
-                                            matchStatus === "idle",
-                                        "border-blue-400 animate-pulse":
-                                            matchStatus === "scanning",
-                                        "border-green-500":
-                                            matchStatus === "success",
-                                        "border-red-500":
-                                            matchStatus === "error",
+                                        "border-gray-300": matchStatus === "idle",
+                                        "border-yellow-400 animate-pulse": matchStatus === "preparing",
+                                        "border-blue-400 animate-pulse": matchStatus === "scanning",
+                                        "border-green-500": matchStatus === "success",
+                                        "border-red-500": matchStatus === "error",
                                     }
                                 )}
                             >
@@ -363,6 +393,31 @@ const IdTextScanner = ({
                                     className="w-full h-auto"
                                 />
 
+                                {/* Countdown Overlay */}
+                                {isCountingDown && (
+                                    <div className="absolute inset-0 bg-yellow-500/20 flex items-center justify-center z-20">
+                                        <div className="bg-white/90 backdrop-blur-sm rounded-xl p-6 text-center shadow-lg">
+                                            <div className="text-6xl mb-3 animate-pulse">
+                                                {countdown}
+                                            </div>
+                                            <p className="text-lg font-semibold text-yellow-700 mb-2">
+                                                Get Ready!
+                                            </p>
+                                            <p className="text-sm text-gray-600">
+                                                Position your {getQualificationDisplay()} ID clearly
+                                            </p>
+                                            <div className="w-48 bg-gray-200 rounded-full h-2 mt-3">
+                                                <div
+                                                    className="bg-yellow-500 h-2 rounded-full transition-all duration-1000"
+                                                    style={{
+                                                        width: `${((10 - countdown) / 10) * 100}%`,
+                                                    }}
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
                                 {/* Scanning Overlay */}
                                 {matchStatus === "scanning" && (
                                     <div className="absolute inset-0 bg-blue-500/20 flex items-center justify-center z-20">
@@ -371,9 +426,7 @@ const IdTextScanner = ({
                                                 🔍
                                             </div>
                                             <p className="text-lg font-semibold text-blue-700 mb-2">
-                                                Scanning{" "}
-                                                {getQualificationDisplay()}{" "}
-                                                ID...
+                                                Scanning {getQualificationDisplay()} ID...
                                             </p>
                                             <div className="w-48 bg-gray-200 rounded-full h-3 mb-2">
                                                 <div
@@ -386,12 +439,6 @@ const IdTextScanner = ({
                                             <p className="text-sm text-gray-600">
                                                 {scanProgress}% Complete
                                             </p>
-                                            {scanAttempts > 3 && (
-                                                <p className="text-xs text-orange-600 mt-1">
-                                                    Hold steady for better
-                                                    results
-                                                </p>
-                                            )}
                                         </div>
                                     </div>
                                 )}
@@ -400,12 +447,10 @@ const IdTextScanner = ({
                                 {matchStatus === "success" && (
                                     <div className="absolute inset-0 bg-green-500/20 flex items-center justify-center z-20">
                                         <div className="bg-white/90 backdrop-blur-sm rounded-xl p-6 text-center shadow-lg">
-                                            <div className="text-4xl mb-3">
-                                                ✅
-                                            </div>
+                                            <div className="text-4xl mb-3">✅</div>
                                             <p className="text-lg font-semibold text-green-700">
-                                                {getQualificationDisplay()} ID
-                                                Verified!
+                                                {getQualificationDisplay()} ID Verified!
+                                                <br /> <small>Please scroll down to proceed</small>
                                             </p>
                                         </div>
                                     </div>
@@ -413,11 +458,9 @@ const IdTextScanner = ({
 
                                 {/* Error Overlay */}
                                 {matchStatus === "error" && (
-                                    <div className="absolute inset-0 bg-red-500/20 flex items-center justify-center z-20">
+                                    <div className="absolute inset-0 bg-red-500/20 flex items-center justify-center z-20 hidden">
                                         <div className="bg-white/90 backdrop-blur-sm rounded-xl p-6 text-center shadow-lg">
-                                            <div className="text-4xl mb-3">
-                                                ❌
-                                            </div>
+                                            <div className="text-4xl mb-3">❌</div>
                                             <p className="text-lg font-semibold text-red-700">
                                                 Verification Failed
                                             </p>
@@ -425,18 +468,14 @@ const IdTextScanner = ({
                                                 {detectedType === "unknown"
                                                     ? "ID type not recognized"
                                                     : `Expected ${getQualificationDisplay()}, found ${
-                                                          detectedType ===
-                                                          "senior citizen"
+                                                          detectedType === "senior citizen"
                                                               ? "Senior Citizen"
                                                               : "PWD"
                                                       }`}
                                             </p>
-                                            {scanAttempts > 5 && (
-                                                <p className="text-xs text-orange-600 mt-1">
-                                                    Try adjusting lighting or
-                                                    angle
-                                                </p>
-                                            )}
+                                            <p className="text-xs text-orange-600 mt-2">
+                                                Click "Retry Scan" to try again
+                                            </p>
                                         </div>
                                     </div>
                                 )}
@@ -444,25 +483,23 @@ const IdTextScanner = ({
 
                             {/* Manual Scan Button */}
                             <button
-                                onClick={captureAndScan}
-                                disabled={scanning || !isWebcamReady}
+                                onClick={startCountdown}
+                                disabled={isButtonDisabled()}
                                 className={classNames(
                                     "w-full mt-4 py-3 px-6 rounded-lg font-semibold transition-all duration-200",
                                     {
                                         "bg-blue-500 hover:bg-blue-600 text-white shadow-lg hover:shadow-xl":
-                                            !scanning && isWebcamReady,
+                                            !isButtonDisabled() && matchStatus !== "error",
+                                        "bg-red-500 hover:bg-red-600 text-white shadow-lg hover:shadow-xl":
+                                            !isButtonDisabled() && matchStatus === "error",
+                                        "bg-yellow-500 text-white cursor-not-allowed":
+                                            isCountingDown,
                                         "bg-gray-300 text-gray-500 cursor-not-allowed":
-                                            scanning || !isWebcamReady,
+                                            (scanning || !isWebcamReady) && !isCountingDown,
                                     }
                                 )}
                             >
-                                {scanning ? (
-                                    <>🔍 Scanning... {scanProgress}%</>
-                                ) : !isWebcamReady ? (
-                                    "📷 Initializing Camera..."
-                                ) : (
-                                    `📸 Scan ${getQualificationDisplay()} ID`
-                                )}
+                                {getButtonText()}
                             </button>
                         </div>
                     </div>
@@ -474,19 +511,23 @@ const IdTextScanner = ({
                             <h4 className="text-lg font-semibold mb-3 flex items-center gap-2">
                                 📊 Scan Status
                             </h4>
-
                             {matchStatus === "idle" && (
                                 <div className="p-3 bg-gray-100 rounded-lg border-l-4 border-gray-400">
                                     <p className="text-gray-700 text-sm">
-                                        Ready to scan. Position your{" "}
-                                        <strong>
-                                            {getQualificationDisplay()}
-                                        </strong>{" "}
-                                        ID within the guidelines.
+                                        Ready to scan. Click the scan button to start the 10-second countdown.
                                     </p>
                                 </div>
                             )}
-
+                            {matchStatus === "preparing" && (
+                                <div className="p-3 bg-yellow-100 rounded-lg border-l-4 border-yellow-500">
+                                    <p className="text-yellow-700 font-medium text-sm">
+                                        ⏱️ Preparing to scan in {countdown} seconds...
+                                    </p>
+                                    <p className="text-yellow-600 text-xs mt-1">
+                                        Position your <strong>{getQualificationDisplay()}</strong> ID clearly in view
+                                    </p>
+                                </div>
+                            )}
                             {matchStatus === "scanning" && (
                                 <div className="p-3 bg-blue-100 rounded-lg border-l-4 border-blue-500">
                                     <p className="text-blue-700 font-medium text-sm text-start">
@@ -496,15 +537,8 @@ const IdTextScanner = ({
                                         </strong>{" "}
                                         keywords...
                                     </p>
-                                    {scanAttempts > 3 && (
-                                        <p className="text-blue-600 text-xs mt-1 text-start">
-                                            💡 Tip: Ensure good lighting and
-                                            hold the ID steady
-                                        </p>
-                                    )}
                                 </div>
                             )}
-
                             {matchStatus === "success" && (
                                 <div className="p-3 bg-green-100 rounded-lg border-l-4 border-green-500">
                                     <p className="text-green-700 font-medium text-sm">
@@ -517,7 +551,6 @@ const IdTextScanner = ({
                                     </p>
                                 </div>
                             )}
-
                             {matchStatus === "error" && (
                                 <div className="p-3 bg-red-100 rounded-lg border-l-4 border-red-500">
                                     <p className="text-red-700 font-medium text-sm text-start">
@@ -534,15 +567,11 @@ const IdTextScanner = ({
                                               }).`
                                             : " Name not found in database."}
                                     </p>
-                                    {scanAttempts > 5 && (
-                                        <p className="text-orange-600 text-xs mt-1 text-start">
-                                            💡 Try improving lighting or
-                                            repositioning the ID
-                                        </p>
-                                    )}
+                                    <p className="text-orange-600 text-xs mt-1 text-start">
+                                        💡 Click "Retry Scan" to try again with better positioning
+                                    </p>
                                 </div>
                             )}
-
                             {detectedType && detectedType !== "unknown" && (
                                 <div className="mt-3">
                                     <span
@@ -601,6 +630,17 @@ const IdTextScanner = ({
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-2">
+                                        <span className="text-lg">📧</span>
+                                        <div>
+                                            <p className="font-medium text-sm">
+                                                {matchedPerson.email}
+                                            </p>
+                                            <p className="text-gray-600 text-xs">
+                                                Email Address
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-2">
                                         <span className="text-lg">🆔</span>
                                         <div>
                                             <p className="font-medium text-sm">
@@ -615,42 +655,74 @@ const IdTextScanner = ({
                             </div>
                         )}
 
-                        {/* Tips for Better Scanning */}
-                        <div className="bg-white rounded-xl shadow-lg p-6">
-                            <h4 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                                💡 Scanning Tips
-                            </h4>
-                            <div className="space-y-2 text-sm text-gray-600">
-                                <div className="flex items-start gap-2">
-                                    <span className="text-green-500 mt-0.5">
-                                        ✓
-                                    </span>
-                                    <span>Ensure good lighting on the ID</span>
+                        {/* Scanning Instructions */}
+                        {!matchedPerson && (
+                            <>
+                                <div className="bg-white rounded-xl shadow-lg p-6">
+                                    <h4 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                                        📋 How It Works
+                                    </h4>
+                                    <div className="space-y-2 text-sm text-gray-600">
+                                        <div className="flex items-start gap-2">
+                                            <span className="text-blue-500 mt-0.5">1.</span>
+                                            <span>Click "Start Scan" button</span>
+                                        </div>
+                                        <div className="flex items-start gap-2">
+                                            <span className="text-blue-500 mt-0.5">2.</span>
+                                            <span>10-second countdown begins</span>
+                                        </div>
+                                        <div className="flex items-start gap-2">
+                                            <span className="text-blue-500 mt-0.5">3.</span>
+                                            <span>Position your ID clearly during countdown</span>
+                                        </div>
+                                        <div className="flex items-start gap-2">
+                                            <span className="text-blue-500 mt-0.5">4.</span>
+                                            <span>Automatic scanning starts after countdown</span>
+                                        </div>
+                                        <div className="flex items-start gap-2">
+                                            <span className="text-blue-500 mt-0.5">5.</span>
+                                            <span>If failed, click "Retry Scan" to repeat process</span>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div className="flex items-start gap-2">
-                                    <span className="text-green-500 mt-0.5">
-                                        ✓
-                                    </span>
-                                    <span>
-                                        Hold the ID steady within the guidelines
-                                    </span>
+                                {/* Tips for Better Scanning */}
+                                <div className="bg-white rounded-xl shadow-lg p-6">
+                                    <h4 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                                        💡 Scanning Tips
+                                    </h4>
+                                    <div className="space-y-2 text-sm text-gray-600">
+                                        <div className="flex items-start gap-2">
+                                            <span className="text-green-500 mt-0.5">
+                                                ✓
+                                            </span>
+                                            <span>Ensure good lighting on the ID</span>
+                                        </div>
+                                        <div className="flex items-start gap-2">
+                                            <span className="text-green-500 mt-0.5">
+                                                ✓
+                                            </span>
+                                            <span>
+                                                Hold the ID steady within the guidelines
+                                            </span>
+                                        </div>
+                                        <div className="flex items-start gap-2">
+                                            <span className="text-green-500 mt-0.5">
+                                                ✓
+                                            </span>
+                                            <span>Avoid glare and shadows</span>
+                                        </div>
+                                        <div className="flex items-start gap-2">
+                                            <span className="text-green-500 mt-0.5">
+                                                ✓
+                                            </span>
+                                            <span>
+                                                Keep the ID flat and fully visible
+                                            </span>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div className="flex items-start gap-2">
-                                    <span className="text-green-500 mt-0.5">
-                                        ✓
-                                    </span>
-                                    <span>Avoid glare and shadows</span>
-                                </div>
-                                <div className="flex items-start gap-2">
-                                    <span className="text-green-500 mt-0.5">
-                                        ✓
-                                    </span>
-                                    <span>
-                                        Keep the ID flat and fully visible
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
+                            </>
+                        )}
                     </div>
                 </div>
 
