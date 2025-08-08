@@ -237,12 +237,14 @@ export default function Display() {
                 </div>
             ) : (
                 <div className="mt-4 mb-14 flex justify-center">
-                    <Player
+                    {/* <Player
                         autoplay
                         loop
                         src="/img/queue-timer.json"
                         className="w-auto h-[200px] md:h-[300px]"
-                    />
+                    /> */}
+                    {/* <img src="https://cdn-icons-gif.flaticon.com/10282/10282564.gif" alt="" /> */}
+                    <img src="https://cdn-icons-gif.flaticon.com/10282/10282564.gif" className="w-[70px]" alt="" />
                 </div>
             )}
 

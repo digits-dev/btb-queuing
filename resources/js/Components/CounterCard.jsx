@@ -29,12 +29,14 @@ export default function CounterCard({
                             Waiting for next <br></br> customer...
                         </h1>
                         <div className="flex justify-center mt-4">
-                            <Player
+                            {/* <Player
                                 autoplay
                                 loop
                                 src="/img/waiting.json"
                                 style={{ height: "68px", width: "300px" }}
-                            />
+                            /> */}
+                            <img src="https://cdn-icons-gif.flaticon.com/10282/10282564.gif" className="w-[70px]" alt="" />
+
                         </div>
                     </>
                 )}
