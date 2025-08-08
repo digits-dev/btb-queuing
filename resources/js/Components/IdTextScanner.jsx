@@ -374,8 +374,8 @@ const IdTextScanner = ({
                                     "rounded-lg overflow-hidden transition-all duration-300 border-4",
                                     {
                                         "border-gray-300": matchStatus === "idle",
-                                        "border-yellow-400 animate-pulse": matchStatus === "preparing",
-                                        "border-blue-400 animate-pulse": matchStatus === "scanning",
+                                        "border-yellow-400 ": matchStatus === "preparing",
+                                        "border-blue-400 ": matchStatus === "scanning",
                                         "border-green-500": matchStatus === "success",
                                         "border-red-500": matchStatus === "error",
                                     }
@@ -395,9 +395,9 @@ const IdTextScanner = ({
 
                                 {/* Countdown Overlay */}
                                 {isCountingDown && (
-                                    <div className="absolute inset-0 bg-yellow-500/20 flex items-center justify-center z-20">
+                                    <div className="absolute inset-0 mt-[400px] bg-yellow-500/20 flex items-center justify-center z-20">
                                         <div className="bg-white/90 backdrop-blur-sm rounded-xl p-6 text-center shadow-lg">
-                                            <div className="text-6xl mb-3 animate-pulse">
+                                            <div className="text-6xl mb-3 ">
                                                 {countdown}
                                             </div>
                                             <p className="text-lg font-semibold text-yellow-700 mb-2">

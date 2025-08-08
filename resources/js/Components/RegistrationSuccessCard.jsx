@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { router } from "@inertiajs/react";
 
 export default function RegistrationSuccessCard({ number, name, service, className="" }) {
-    const [redirectCountdown, setRedirectCountdown] = useState(3);
+    const [redirectCountdown, setRedirectCountdown] = useState(10);
 
     useEffect(() => {
         const timer = setInterval(() => {
@@ -45,6 +45,14 @@ export default function RegistrationSuccessCard({ number, name, service, classNa
                         <span className="inline-block w-3 h-3 mr-1 rounded-full bg-gray-400 animate-bounce"></span>
                         <span className="inline-block w-3 h-3 mr-1 rounded-full bg-gray-400 animate-bounce [animation-delay:0.2s]"></span>
                         <span className="inline-block w-3 h-3 rounded-full bg-gray-400 animate-bounce [animation-delay:0.4s]"></span>
+                    </div>
+                    <div>
+                        <button className="py-2 px-3 bg-gray-800 rounded-lg text-white"
+                            onClick={ () => location.reload()}    
+                        > 
+                            <i className="fas fa-arrow-back"></i>
+                            Return to Home Page
+                        </button>
                     </div>
                 </div>
             </div>
